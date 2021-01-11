@@ -1,4 +1,4 @@
-# SpeakerEncoder
+# Speaker Encoder
 
 
 This repository contains the Speaker Encoder model of <a href="https://github.com/mozilla/TTS">Mozilla TTS</a> repository without additional modules for easy-to-use computation of speech embeddings.
