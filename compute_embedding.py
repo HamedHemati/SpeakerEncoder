@@ -10,13 +10,13 @@ from speaker_encoder.io import load_config
 
 
 class SpeechEmbedding():
-    def __init__(self, config):
+    def __init__(self, config, model_path):
         self.ap = AudioProcessor(**config['audio'])
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Define Encoder model and load pretrained checkpoint
         self.model = SpeakerEncoder(**config.model).to(self.device)
-        self.model.load_state_dict(torch.load(args.model_path, map_location=self.device)['model'])
+        self.model.load_state_dict(torch.load(model_path, map_location=self.device)['model'])
         self.model.eval()
 
     def compute_embedding(self, wav_file):
@@ -31,7 +31,7 @@ class SpeechEmbedding():
 
 def main(args):
     config = load_config(args.config_path)
-    speech_embedding = SpeechEmbedding(config)
+    speech_embedding = SpeechEmbedding(config, args.model_path)
 
     # Compute speaker embeddings
     wav_file = args.input_path
