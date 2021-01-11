@@ -9,26 +9,35 @@ from speaker_encoder.audio import AudioProcessor
 from speaker_encoder.io import load_config
 
 
-def main(args):
-    c = load_config(args.config_path)
-    ap = AudioProcessor(**c['audio'])
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+class SpeechEmbedding():
+    def __init__(self, config):
+        self.ap = AudioProcessor(**config['audio'])
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Define Encoder model and load pretrained checkpoint
-    model = SpeakerEncoder(**c.model).to(device)
-    model.load_state_dict(torch.load(args.model_path, map_location=device)['model'])
-    model.eval()
+        # Define Encoder model and load pretrained checkpoint
+        self.model = SpeakerEncoder(**config.model).to(self.device)
+        self.model.load_state_dict(torch.load(args.model_path, map_location=self.device)['model'])
+        self.model.eval()
+
+    def compute_embedding(self, wav_file):
+        mel_spec = self.ap.melspectrogram(self.ap.load_wav(wav_file, sr=self.ap.sample_rate)).T
+        mel_spec = torch.FloatTensor(mel_spec[None, :, :])
+        mel_spec = mel_spec.to(self.device)
+        embedd = self.model.compute_embedding(mel_spec)
+        embedd = embedd.detach().cpu().numpy()
+
+        return embedd
+    
+
+def main(args):
+    config = load_config(args.config_path)
+    speech_embedding = SpeechEmbedding(config)
 
     # Compute speaker embeddings
     wav_file = args.input_path
-
-    mel_spec = ap.melspectrogram(ap.load_wav(wav_file, sr=ap.sample_rate)).T
-    mel_spec = torch.FloatTensor(mel_spec[None, :, :])
-    mel_spec = mel_spec.to(device)
-    embedd = model.compute_embedding(mel_spec)
-    embedd = embedd.detach().cpu().numpy()
-
+    embedd = speech_embedding.compute_embedding(wav_file)
     print(embedd)
+    print(embedd.shape)
 
 
 if __name__ == "__main__":
