@@ -1,7 +1,10 @@
+from limit_threads import *
 import argparse
 import glob
 import os
 import numpy as np
+import pickle
+import random
 from tqdm import tqdm
 import torch
 from speaker_encoder.model import SpeakerEncoder
@@ -34,11 +37,25 @@ def main(args):
     speech_embedding = SpeechEmbedding(config, args.model_path)
 
     # Compute speaker embeddings
-    wav_file = args.input_path
-    embedd = speech_embedding.compute_embedding(wav_file)
-    print(embedd)
-    print(embedd.shape)
+    if os.path.isfile(args.input_path):
+        wav_file = args.input_path
+        embedd = speech_embedding.compute_embedding(wav_file)
+        embedd = embedd[0]
+    else:
+        wav_files = glob.glob(os.path.join(args.input_path, "*.wav"))
+        random.shuffle(wav_files)
+        wav_files = wav_files[:20]
+        all_embdes = []
+        for itr, wav_file in enumerate(wav_files):
+            print(f"Computing embedding for file {itr}/{len(wav_files)}")
+            embedd = speech_embedding.compute_embedding(wav_file)
+            all_embdes.append(list(embedd[0]))
+        embedd = np.mean(np.array(all_embdes), axis=0)
 
+    print(embedd.shape)
+    emb_dict = {args.spk_name: embedd}
+    with open(os.path.join(args.output_path, f"{args.spk_name}_emb.pkl"), "wb") as pkl_file:
+        pickle.dump(emb_dict, pkl_file)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -46,6 +63,8 @@ if __name__ == "__main__":
     parser.add_argument('--config_path', type=str, default="pretrained_model/config.json", required=False)
     parser.add_argument('--output_path', type=str, default="outputs/", required=False)
     parser.add_argument('--input_path', type=str, default="outputs/", required=False)
+    parser.add_argument('--spk_name', type=str, required=True)
+
     args = parser.parse_args()
 
     main(args)
