@@ -36,25 +36,31 @@ def main(args):
     config = load_config(args.config_path)
     speech_embedding = SpeechEmbedding(config, args.model_path)
 
+    emb_dict = {}
     # Compute speaker embeddings
     if os.path.isfile(args.input_path):
         wav_file = args.input_path
         embedd = speech_embedding.compute_embedding(wav_file)
         embedd = embedd[0]
     else:
-        wav_files = glob.glob(os.path.join(args.input_path, "*.wav"))
-        random.shuffle(wav_files)
-        wav_files = wav_files[:20]
-        all_embdes = []
-        for itr, wav_file in enumerate(wav_files):
-            print(f"Computing embedding for file {itr}/{len(wav_files)}")
-            embedd = speech_embedding.compute_embedding(wav_file)
-            all_embdes.append(list(embedd[0]))
-        embedd = np.mean(np.array(all_embdes), axis=0)
+        spk_list = os.listdir(args.input_path)
+        for spk_itr, spk_name in enumerate(spk_list):
+            print(f"Spaker {spk_itr}/{len(spk_list)}::")
+            wav_files = glob.glob(os.path.join(args.input_path, spk_name, "*.wav"))
+            if len(wav_files) == 0:
+                continue
 
-    print(embedd.shape)
-    emb_dict = {args.spk_name: embedd}
-    with open(os.path.join(args.output_path, f"{args.spk_name}_emb.pkl"), "wb") as pkl_file:
+            random.shuffle(wav_files)
+            wav_files = wav_files[:20]
+            all_embdes = []
+            for itr, wav_file in enumerate(wav_files):
+                print(f"Computing embedding for file {itr}/{len(wav_files)}")
+                embedd = speech_embedding.compute_embedding(wav_file)
+                all_embdes.append(list(embedd[0]))
+            embedd = np.mean(np.array(all_embdes), axis=0)
+            emb_dict[spk_name] = embedd
+
+    with open(os.path.join(args.output_path, f"{args.output_name}_emb.pkl"), "wb") as pkl_file:
         pickle.dump(emb_dict, pkl_file)
 
 if __name__ == "__main__":
@@ -63,7 +69,7 @@ if __name__ == "__main__":
     parser.add_argument('--config_path', type=str, default="pretrained_model/config.json", required=False)
     parser.add_argument('--output_path', type=str, default="outputs/", required=False)
     parser.add_argument('--input_path', type=str, default="outputs/", required=False)
-    parser.add_argument('--spk_name', type=str, required=True)
+    parser.add_argument('--output_name', type=str, required=True)
 
     args = parser.parse_args()
 
