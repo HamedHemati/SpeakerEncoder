@@ -24,8 +24,9 @@ class SpeechEmbedding():
         self.model.load_state_dict(torch.load(model_path, map_location=self.device)['model'])
         self.model.eval()
 
-    def compute_embedding(self, wav_file, itr, total):
-        print(f"Computing embedding for file {itr}/{total}")
+    def compute_embedding(self, wav_file, itr, total, verbose=True):
+        if verbose:
+            print(f"Computing embedding for file {itr}/{total}")
 
         mel_spec = self.ap.melspectrogram(self.ap.load_wav(wav_file, sr=self.ap.sample_rate)).T
         mel_spec = torch.FloatTensor(mel_spec[None, :, :])
@@ -47,6 +48,7 @@ def main(args):
         embedd = speech_embedding.compute_embedding(wav_file, 1, 1)
         embedd = embedd[0]
         emb_dict[args.speaker_name] = embedd
+        print(embedd)
     else:
         if args.input_type == "single_speaker":
             spk_list = [args.speaker_name]
@@ -85,7 +87,8 @@ def main(args):
             
             # Add embedding of all files
             emb_dict[spk_name] = {}
-            emb_dict[spk_name].update({embed[0]:embed[1][0] for embed in all_embdds})
+            if args.mode == "all_embs":
+                emb_dict[spk_name].update({embed[0]:embed[1][0] for embed in all_embdds})
 
             # Add mean of embeddings
             all_embdds_list = [list(embedd[1][0]) for embedd in all_embdds]
@@ -106,6 +109,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_wavs', type=int, default=20, required=False)
     parser.add_argument('--num_workers', type=int, default=10, required=False)
     parser.add_argument('--output_name', type=str, required=True)
+    parser.add_argument('--mode', type=str, default="all_embs", required=False)
 
     args = parser.parse_args()
 
